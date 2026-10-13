@@ -18,9 +18,9 @@ export const SOURCES = [
 
 // مربع حول العراق والجوار القريب
 const QUAKE_URL = () => {
-  const start = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 19);
-  return 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&orderby=time&limit=25' +
-    '&minmagnitude=3&minlatitude=28.5&maxlatitude=38&minlongitude=38&maxlongitude=49.5&starttime=' + start;
+  const start = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 19);
+  return 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&orderby=time&limit=15' +
+    '&minmagnitude=3.5&minlatitude=28.5&maxlatitude=38&minlongitude=38&maxlongitude=49.5&starttime=' + start;
 };
 
 // ---------- تصنيف الطوارئ (حسب العنوان فقط) ----------
@@ -41,6 +41,30 @@ export function classify(title) {
     if (ar.some(w => n.includes(w)) || en.test(title)) return cat;
   }
   return null;
+}
+
+
+// ---------- نطاق الخبر: نحتفظ بأخبار العراق فقط ----------
+const IRAQ_AR = /العراق|عراق|بغداد|البصره|نينوي|الموصل|كركوك|اربيل|السليمانيه|دهوك|الانبار|الرمادي|الفلوجه|ديالي|صلاح الدين|تكريت|واسط|الكوت|ميسان|العماره|ذي قار|الناصريه|النجف|كربلاء|بابل|الحله|القادسيه|الديوانيه|المثني|السماوه|حلبجه|كوردستان|كردستان|الكرخ|الرصافه|مدينه الصدر/;
+const IRAQ_EN = /\b(iraq\w*|baghdad|basra|mosul|nineveh|kirkuk|erbil|arbil|sulaymaniyah|duhok|dohuk|anbar|ramadi|fallujah|diyala|salahuddin|tikrit|wasit|maysan|amarah|dhi qar|nasiriyah|najaf|karbala|babil|hillah|diwaniyah|muthanna|samawah|halabja|kurdistan)\b/i;
+const LOCAL = new Set(['localnews', 'local', 'iraq', 'kurdistan', 'security', 'society', 'امن', 'مجتمع', 'كوردستانيات']);
+const POLITICS = new Set(['politics', 'سياسه', 'سیاسه']);
+const SKIP = new Set(['sports', 'sport', 'tech', 'technology', 'entertainment', 'business', 'economy', 'رياضه', 'منوعات', 'اقتصاد', 'culture', 'health-tech']);
+function sectionOf(link) {
+  try {
+    const u = new URL(link);
+    const p = decodeURIComponent(u.pathname).split('/').filter(Boolean).map(x => norm(x));
+    if (/shafaq\.com$/.test(u.hostname)) return p[1] || '';
+    if (/alsumaria\.tv$/.test(u.hostname)) return p[1] || '';
+    return p[0] || '';
+  } catch { return ''; }
+}
+// true = خبر عراقي نعرضه
+export function inScope(link, title) {
+  const sec = sectionOf(link);
+  if (SKIP.has(sec)) return false;
+  if (LOCAL.has(sec) || POLITICS.has(sec)) return true;
+  return IRAQ_AR.test(norm(title)) || IRAQ_EN.test(title);
 }
 
 // ---------- RSS ----------
@@ -117,6 +141,7 @@ export async function build({ sources = SOURCES, fetchText = get, now = Date.now
   const add = it => {
     const t = Date.parse(it.published);
     if (!Number.isFinite(t) || t > now + 10 * 60e3 || now - t > MAX_AGE_H * 36e5) return;
+    if (!inScope(it.link, it.title)) return;
     const key = norm(it.title).replace(/[^\p{L}\p{N}]+/gu, ' ').trim() + '|' + it.lang;
     const cur = map.get(key);
     if (cur && Date.parse(cur.published) >= t) return;
