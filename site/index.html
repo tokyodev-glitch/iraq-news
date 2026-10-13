@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تغذية أخبار الطوارئ</title>
+<style>body{font-family:system-ui,Segoe UI,Tahoma,sans-serif;background:#0b1220;color:#e2e8f0;max-width:640px;margin:40px auto;padding:0 16px;line-height:1.9}
+a{color:#38bdf8}code{background:#1e293b;padding:2px 6px;border-radius:5px}</style></head>
+<body><h1>تغذية أخبار الطوارئ</h1>
+<p>هذه الصفحة تخدم الملف <a href="news.json"><code>news.json</code></a> الذي يقرؤه موقع خدمات الطوارئ.</p>
+<p id="s">جارٍ التحميل…</p>
+<script>
+fetch('news.json',{cache:'no-store'}).then(r=>r.json()).then(d=>{
+ var ok=d.sources.filter(x=>x.ok).length;
+ document.getElementById('s').textContent='آخر تحديث: '+new Date(d.generated).toLocaleString('ar-IQ')+' — الأخبار: '+d.items.length+' — المصادر العاملة: '+ok+'/'+d.sources.length;
+}).catch(()=>{document.getElementById('s').textContent='تعذر قراءة news.json';});
+</script></body></html>
